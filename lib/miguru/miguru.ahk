@@ -101,6 +101,9 @@ class MiguruWM extends WMEvents {
 
         this._validateOpts()
 
+        this._focusIndicator := this._opts.focusIndicator
+        this._delays := this._opts.delays
+
         this._monitors := MonitorList()
         this._workspaces := WorkspaceList(this._monitors, ObjClone(this._opts))
         this._managed := Map()
@@ -108,7 +111,7 @@ class MiguruWM extends WMEvents {
         this._delayed := Timeouts()
 
         this._maybeActiveWindow := ""
-        this._opts.focusIndicator.SetMonitorList(this._monitors)
+        this._focusIndicator.SetMonitorList(this._monitors)
 
         windowTracking := GetSpiInt(SPI_GETACTIVEWINDOWTRACKING)
         if windowTracking !== this._opts.focusFollowsMouse {
@@ -270,7 +273,7 @@ class MiguruWM extends WMEvents {
                     && !WinExist("ahk_id" hwnd " ahk_group MIGURU_IGNORE") {
                     debug("Set active to non-managed {}", WinInfo(hwnd))
                     this._maybeActiveWindow := hwnd
-                    this._opts.focusIndicator.Unmanaged(hwnd)
+                    this._focusIndicator.Unmanaged(hwnd)
                 }
                 return
             }
@@ -312,7 +315,7 @@ class MiguruWM extends WMEvents {
                 if ws.AddIfNew(hwnd) {
                     this._delayed.Add(
                         ws.Retile.Bind(ws),
-                        this._opts.delays.retile2ndTime,
+                        this._delays.retile2ndTime,
                         RETILE_2ND_TIME,
                     )
                 }
@@ -335,7 +338,7 @@ class MiguruWM extends WMEvents {
                         monitor.Index, ws.Index, WinInfo(hwnd)])
                     this._delayed.Replace(
                         this._focus.Bind(this, hwnd, monitor),
-                        this._opts.delays.pinnedWindowFocused,
+                        this._delays.pinnedWindowFocused,
                         PINNED_WINDOW_FOCUSED,
                     )
                 }
@@ -348,8 +351,8 @@ class MiguruWM extends WMEvents {
             }
 
         case EV_WINDOW_POSITIONING:
-            if this._opts.focusIndicator.HideWhenPositioning {
-                this._opts.focusIndicator.Hide()
+            if this._focusIndicator.HideWhenPositioning {
+                this._focusIndicator.Hide()
             }
 
         case EV_WINDOW_HIDDEN, EV_WINDOW_CLOAKED, EV_WINDOW_MINIMIZED:
@@ -384,9 +387,9 @@ class MiguruWM extends WMEvents {
 
             oldWs.ActiveWindow := ""
             if newWs.WindowCount < 1 {
-                this._opts.focusIndicator.Hide()
+                this._focusIndicator.Hide()
             } else {
-                this._opts.focusIndicator.Show(newWs.ActiveWindow)
+                this._focusIndicator.Show(newWs.ActiveWindow)
             }
 
             this._opts.showPopup.Call(this.VD.DesktopName(args.now), {
@@ -593,7 +596,7 @@ class MiguruWM extends WMEvents {
             if follow {
                 this.lastMonitor := this.activeMonitor
                 this.activeMonitor := monitor
-                this._opts.focusIndicator.Show(hwnd)
+                this._focusIndicator.Show(hwnd)
             } else {
                 ws := this._workspaces[this.activeMonitor, this.activeWsIdx]
                 this._focusWorkspace(ws)
@@ -602,13 +605,13 @@ class MiguruWM extends WMEvents {
             ;; Retile again to mitigate cross-DPI issues.
             this._delayed.Add(
                 newWs.Retile.Bind(newWs),
-                this._opts.delays.sendMonitorRetile,
+                this._delays.sendMonitorRetile,
                 SEND_MONITOR_RETILE,
             )
             if follow {
                 this._delayed.Add(
                     ((this, ws) => this._focusWindow(ws.ActiveWindow)).Bind(this, newWs),
-                    this._opts.delays.sendMonitorRetile + 50,
+                    this._delays.sendMonitorRetile + 50,
                     SEND_MONITOR_RETILE,
                 )
             }
@@ -661,8 +664,8 @@ class MiguruWM extends WMEvents {
                 }
             }
 
-            if this._opts.focusIndicator.ShowOnFocusRequest {
-                this._opts.focusIndicator.Show(hwnd)
+            if this._focusIndicator.ShowOnFocusRequest {
+                this._focusIndicator.Show(hwnd)
             }
             this._focusWindow(hwnd)
 
@@ -682,8 +685,8 @@ class MiguruWM extends WMEvents {
             ws := getWorkspace()
             hwnd := req.HasProp("hwnd") ? req.hwnd : WinExist("A")
             ws.Float(hwnd, req.value)
-            if !this._opts.focusIndicator.UpdateOnRetile {
-                this._opts.focusIndicator.Show(WinExist("A"))
+            if !this._focusIndicator.UpdateOnRetile {
+                this._focusIndicator.Show(WinExist("A"))
             }
 
         case "cycle-layout":
@@ -704,7 +707,7 @@ class MiguruWM extends WMEvents {
                 return
             }
             RunDpiAware(() => CenterWindow(hwnd))
-            this._opts.focusIndicator.Show(WinExist("A"))
+            this._focusIndicator.Show(WinExist("A"))
 
         case "resize-window":
             ws := getWorkspace()
@@ -713,8 +716,8 @@ class MiguruWM extends WMEvents {
                 return
             }
             value := req.HasProp("value") ? req.value : 0
-            if this._opts.focusIndicator.HideWhenPositioning {
-                this._opts.focusIndicator.Hide()
+            if this._focusIndicator.HideWhenPositioning {
+                this._focusIndicator.Hide()
             }
             switch value {
             case "maximize":
@@ -735,7 +738,7 @@ class MiguruWM extends WMEvents {
             default:
                 RunDpiAware(() => ResizeWindow(hwnd, value))
             }
-            this._opts.focusIndicator.Show(WinExist("A"))
+            this._focusIndicator.Show(WinExist("A"))
 
         case "get-layout":
             return ObjPtrAddRef({ value: getWorkspace().Layout.DisplayName })
@@ -747,7 +750,7 @@ class MiguruWM extends WMEvents {
             })
             this._delayed.Add(
                 ws.Retile.Bind(ws),
-                this._opts.delays.retile2ndTime,
+                this._delays.retile2ndTime,
                 RETILE_2ND_TIME,
             )
 
@@ -878,7 +881,7 @@ class MiguruWM extends WMEvents {
         if wait {
             this._delayed.Replace(
                 this._onDisplayChange.Bind(this, false),
-                this._opts.delays.onDisplayChange,
+                this._delays.onDisplayChange,
                 ON_DISPLAY_CHANGE,
             )
             return
@@ -886,7 +889,7 @@ class MiguruWM extends WMEvents {
 
         this._monitors.Update()
         global A_SystemDPI := this._monitors.Primary.DPI
-        this._opts.focusIndicator.SetMonitorList(this._monitors)
+        this._focusIndicator.SetMonitorList(this._monitors)
 
         gone := this._workspaces.Update(this._monitors)
         for monitor, workspaces in gone {
@@ -1002,7 +1005,7 @@ class MiguruWM extends WMEvents {
         if wait {
             this._delayed.Add(
                 this._retryManage.Bind(this, event, hwnd, retrycnt, false),
-                this._opts.delays.retryManage,
+                this._delays.retryManage,
                 RETRY_MANAGE,
             )
             return
@@ -1101,7 +1104,7 @@ class MiguruWM extends WMEvents {
         if wait {
             this._delayed.Replace(
                 this._hide.Bind(this, event, hwnd, false),
-                this._opts.delays.windowHidden,
+                this._delays.windowHidden,
                 WINDOW_HIDDEN,
             )
             return
@@ -1127,7 +1130,7 @@ class MiguruWM extends WMEvents {
         ws.ActiveWindow := hwnd
         this._maybeActiveWindow := ""
         this._opts.showPopup.Call("", {})
-        this._opts.focusIndicator.Show(hwnd)
+        this._focusIndicator.Show(hwnd)
 
         ;; If it's an explorer window, focus the content panel.
         ;if WinExist("ahk_id" hwnd
