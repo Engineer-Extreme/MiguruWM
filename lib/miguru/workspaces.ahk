@@ -120,14 +120,14 @@ class WorkspaceList {
             window := this._windows.Get(hwnd, "")
             return window
                 ? window.type == TILED
-                : ""
+                : false
         }
 
         IsFloating(hwnd) {
             window := this._windows.Get(hwnd, "")
             return window
                 ? window.type == FLOATING
-                : ""
+                : false
         }
 
         AddIfNew(hwnd) {
@@ -629,12 +629,21 @@ class WorkspaceList {
                 this._workspaces[m.Handle] := Map()
             }
         }
+        for handle in had {
+            this._workspaces.Delete(handle)
+        }
         return had
     }
 
     __Item[monitor, index] {
         get {
-            workspaces := this._workspaces[monitor.Handle]
+            workspaces := this._workspaces.Get(monitor.Handle, "")
+            if !workspaces {
+                warn("Can't retrieve workspaces for monitor {}", monitor)
+                opts := ObjClone(this._defaults)
+                dummy := WorkspaceList.Workspace(monitor, index, opts)
+                return dummy
+            }
             ws := workspaces.Get(index, "")
             if !ws {
                 opts := ObjClone(this._defaults)

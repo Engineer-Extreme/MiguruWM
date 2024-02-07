@@ -119,7 +119,7 @@ class MiguruWM extends WMEvents {
             SetSpiInt(SPI_SETACTIVEWINDOWTRACKING, this._opts.focusFollowsMouse)
         }
 
-        this.activeMonitor := 1
+        this.activeMonitor := this._monitors.Primary
         this.activeWsIdx := 1
 
         super.__New()
@@ -500,7 +500,7 @@ class MiguruWM extends WMEvents {
                 case "first":
                     idx := 1
                 case "last":
-                    idx := this.VD.GetCount()
+                    idx := this.VD.Count()
                 case "mru":
                     if this.lastWsIdx {
                         idx := this.lastWsIdx
@@ -703,7 +703,7 @@ class MiguruWM extends WMEvents {
         case "center-window":
             ws := getWorkspace()
             hwnd := req.HasProp("hwnd") ? req.hwnd : WinExist("A")
-            if !ws.IsFloating(hwnd) {
+            if ws.IsTiled(hwnd) {
                 return
             }
             RunDpiAware(() => CenterWindow(hwnd))
@@ -712,7 +712,7 @@ class MiguruWM extends WMEvents {
         case "resize-window":
             ws := getWorkspace()
             hwnd := req.HasProp("hwnd") ? req.hwnd : WinExist("A")
-            if !ws.IsFloating(hwnd) {
+            if ws.IsTiled(hwnd) {
                 return
             }
             value := req.HasProp("value") ? req.value : 0
