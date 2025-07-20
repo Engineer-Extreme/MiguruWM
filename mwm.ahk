@@ -55,6 +55,7 @@ mwm := MiguruWM({
     }, opts)),
     focusIndicator: HazeOver(),
     ;; …see https://github.com/imawizard/MiguruWM/wiki/Configuration
+    focusFollowsMouse: true,
 })
 
 MiguruWM.SetupTrayMenu()
